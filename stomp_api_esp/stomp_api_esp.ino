@@ -61,8 +61,21 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             else
             {
                 JsonObject postObj = doc.as<JsonObject>();
-                int luminosidade = doc["luminosidade"];
-                //                    Serial.println(luminosidade);
+                if (sub_S.indexOf("new") > 0)
+                {
+                    int new_logado = doc["new_logado"];
+                    Serial.println(new_logado);
+                }
+                else if (sub_S.indexOf("logado") > 0)
+                {
+                    int logado = doc["logado"];
+                    Serial.println(logado);
+                }
+                else if (sub_S.indexOf("luminosidade") > 0)
+                {
+                    int luminosidade = doc["luminosidade"];
+                    Serial.println(luminosidade);
+                }
 
                 DynamicJsonDocument doc(512);
                 doc["status"] = "OK";
@@ -85,7 +98,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     }
 }
 
-void setActivity()
+void setMessage()
 {
     String postBody = server.arg("plain");
 
@@ -106,35 +119,22 @@ void setActivity()
     else
     {
         JsonObject postObj = doc.as<JsonObject>();
-        int json_atividade = doc["atividade"];
 
-        if (server.method() == HTTP_POST)
-        {
-            if (postObj.containsKey("atividade"))
-            {
+        String payload;
+        serializeJson(doc, payload);
+        Serial.println(payload.c_str());
+        String msg = "SEND\ndestination:/queue/end_point\n\n";
+        msg.concat(payload);
 
-                String ativ;
-                serializeJson(doc, ativ);
-                //                Serial.println(ativ);
-                String msg = "SEND\ndestination:/queue/end_point\n\n";
-                msg.concat(ativ);
+        sendMessage(msg);
 
-                sendMessage(msg);
-            }
-            else
-            {
-                DynamicJsonDocument doc(512);
-                doc["status"] = "KO";
-                doc["message"] = F("No data found, or incorrect!");
+        DynamicJsonDocument doc(512);
+        doc["status"] = "OK";
+        String buf;
 
-                Serial.print(F("Stream..."));
-                String buf;
-                serializeJson(doc, buf);
+        serializeJson(doc, buf);
 
-                server.send(400, F("application/json"), buf);
-                Serial.print(F("done."));
-            }
-        }
+        server.send(201, F("application/json"), buf);
     }
 }
 
@@ -142,10 +142,10 @@ void setActivity()
 void restServerRouting()
 {
     server.on("/", HTTP_GET, []()
-                { server.send(200, F("text/html"),
+              { server.send(200, F("text/html"),
                             F("Welcome to the REST Web Server")); });
     // handle post request
-    server.on(F("/atividade"), HTTP_POST, setActivity);
+    server.on(F("/atividade"), HTTP_POST, setMessage);
 }
 
 // Manage not found URL

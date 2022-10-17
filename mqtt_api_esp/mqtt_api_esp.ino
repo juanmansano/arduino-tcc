@@ -88,7 +88,7 @@ void onMqttUnsubscribe(uint16_t packetId)
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
 {
-  Serial.println(sizeof(payload));
+  String mensagem = payload; 
   DynamicJsonDocument doc(512);
   DeserializationError error = deserializeJson(doc, payload);
 
@@ -101,30 +101,28 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
   else
   {
     JsonObject postObj = doc.as<JsonObject>();
-
-    String text = (char *)payload;
-
-    Serial.println(text.length());
-
-    int luminosidade = doc["luminosidade"];
-    //        Serial.println(luminosidade);
-
-    DynamicJsonDocument doc(512);
-    doc["status"] = "OK";
-    String buf;
-
-    serializeJson(doc, buf);
-
-    server.send(201, F("application/json"), buf);
+    
+    if (mensagem.indexOf("new") > 0){
+      int new_logado = doc["new_logado"];
+      Serial.println(new_logado);
+    }
+    else if(mensagem.indexOf("logado") > 0){
+      int logado = doc["logado"];
+      Serial.println(logado);
+    }
+    else if (mensagem.indexOf("luminosidade") > 0){
+      int luminosidade = doc["luminosidade"];
+      Serial.println(luminosidade);
+    }
   }
 }
 
 void onMqttPublish(uint16_t packetId)
 {
-  //  Serial.println("Mensagem enviada!");
+  // Serial.println("Mensagem enviada!");
 }
 
-void setActivity()
+void sendMessage()
 {
   String postBody = server.arg("plain");
 
@@ -145,32 +143,19 @@ void setActivity()
   else
   {
     JsonObject postObj = doc.as<JsonObject>();
-    int json_atividade = doc["atividade"];
 
-    if (server.method() == HTTP_POST)
-    {
-      if (postObj.containsKey("atividade"))
-      {
+    String msg;
+    serializeJson(doc, msg);
+    Serial.println(msg.c_str());
+    mqttClient.publish(MQTT_PUB, MQTT_QOS, true, msg.c_str());
 
-        String ativ;
-        serializeJson(doc, ativ);
-        //                Serial.println(ativ.c_str());
-        mqttClient.publish(MQTT_PUB, MQTT_QOS, true, ativ.c_str());
-      }
-      else
-      {
-        DynamicJsonDocument doc(512);
-        doc["status"] = "KO";
-        doc["message"] = F("No data found, or incorrect!");
+    DynamicJsonDocument doc(512);
+    doc["status"] = "OK";
+    String buf;
 
-        Serial.print(F("Stream..."));
-        String buf;
-        serializeJson(doc, buf);
+    serializeJson(doc, buf);
 
-        server.send(400, F("application/json"), buf);
-        Serial.print(F("done."));
-      }
-    }
+    server.send(201, F("application/json"), buf);
   }
 }
 
@@ -181,7 +166,7 @@ void restServerRouting()
             { server.send(200, F("text/html"),
                           F("Welcome to the REST Web Server")); });
   // handle post request
-  server.on(F("/atividade"), HTTP_POST, setActivity);
+  server.on(F("/atividade"), HTTP_POST, sendMessage);
 }
 
 // Manage not found URL
