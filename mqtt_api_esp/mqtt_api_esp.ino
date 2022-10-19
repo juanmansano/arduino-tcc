@@ -102,18 +102,18 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
   {
     JsonObject postObj = doc.as<JsonObject>();
     
-    if (mensagem.indexOf("new") > 0){
-      int new_logado = doc["new_logado"];
-      Serial.println(new_logado);
-    }
-    else if(mensagem.indexOf("logado") > 0){
-      int logado = doc["logado"];
-      Serial.println(logado);
-    }
-    else if (mensagem.indexOf("luminosidade") > 0){
+    if (mensagem.indexOf("luminosidade") > 0){
       int luminosidade = doc["luminosidade"];
       Serial.println(luminosidade);
     }
+
+    String buf;
+
+    serializeJson(doc, buf);
+
+    Serial.println(buf);
+
+    server.send(201, F("application/json"), buf);
   }
 }
 
@@ -149,22 +149,21 @@ void sendMessage()
     Serial.println(msg.c_str());
     mqttClient.publish(MQTT_PUB, MQTT_QOS, true, msg.c_str());
 
-    DynamicJsonDocument doc(512);
-    doc["status"] = "OK";
-    String buf;
-
-    serializeJson(doc, buf);
-
-    server.send(201, F("application/json"), buf);
   }
+}
+
+void getAtividades()
+{
+
+  char msg[] = "getAtividade";
+  mqttClient.publish(MQTT_PUB, MQTT_QOS, true, msg);
+
 }
 
 // Define routing
 void restServerRouting()
 {
-  server.on("/", HTTP_GET, []()
-            { server.send(200, F("text/html"),
-                          F("Welcome to the REST Web Server")); });
+  server.on("/atividades", HTTP_GET, getAtividades);
   // handle post request
   server.on(F("/atividade"), HTTP_POST, sendMessage);
 }
